@@ -1,0 +1,77 @@
+name: Build Windows app and publish release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Generate application icon
+        shell: pwsh
+        run: ./tools/make-icon.ps1
+
+      - name: Configure native x64 build
+        run: cmake -S . -B build -A x64
+
+      - name: Compile Rec-lox
+        run: cmake --build build --config Release --parallel
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          if (!(Test-Path "build/Release/Rec-lox.exe")) {
+            throw "Rec-lox.exe was not produced by the build."
+          }
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw "Inno Setup 6 was not found on this runner." }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          & $iscc "installer/RecLox.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Package portable build
+        shell: pwsh
+        run: |
+          $portable = "dist/portable"
+          New-Item -ItemType Directory -Force -Path $portable | Out-Null
+          Copy-Item "build/Release/Rec-lox.exe" "$portable/Rec-lox.exe"
+          Copy-Item "README.md" "$portable/README.md"
+          Copy-Item "LICENSE" "$portable/LICENSE"
+          Compress-Archive -Path "$portable/*" -DestinationPath "dist/Rec-lox-Portable.zip" -CompressionLevel Optimal
+          Remove-Item $portable -Recurse -Force
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.${{ github.run_number }}
+          name: Rec-lox v0.1.${{ github.run_number }}
+          make_latest: true
+          generate_release_notes: true
+          body: |
+            ## Rec-lox for Windows
+
+            - F8: start / stop recording
+            - F9: pause / resume
+            - H.264 MP4 video saved locally in Videos/Rec-lox
+            - Primary-display capture, up to 30 FPS
+
+            **Capture scope:** this initial build records video only. It does not capture microphone, game, or system audio.
+          files: |
+            dist/Rec-lox-Setup.exe
+            dist/Rec-lox-Portable.zip
