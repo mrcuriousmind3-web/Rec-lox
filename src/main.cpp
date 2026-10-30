@@ -651,7 +651,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     windowClass.hInstance = instance;
     windowClass.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(IDI_APP));
     windowClass.hIconSm = LoadIconW(instance, MAKEINTRESOURCEW(IDI_APP));
-    windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    windowClass.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
     windowClass.hbrBackground = g_backgroundBrush;
     windowClass.lpszClassName = kWindowClass;
 
