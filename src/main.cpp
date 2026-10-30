@@ -17,6 +17,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 
 #include "resource.h"
 
@@ -531,7 +532,9 @@ void DrawButton(const DRAWITEMSTRUCT* item) {
     SetBkMode(item->hDC, TRANSPARENT);
     SetTextColor(item->hDC, text);
     RECT textRect = item->rcItem;
-    DrawTextW(item->hDC, reinterpret_cast<const wchar_t*>(item->itemData), -1, &textRect,
+    wchar_t label[128]{};
+    GetWindowTextW(item->hwndItem, label, static_cast<int>(std::size(label)));
+    DrawTextW(item->hDC, label, -1, &textRect,
         DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 }
 
